@@ -1,0 +1,50 @@
+{
+  "pets": [
+    {
+      "id": 1,
+      "name": "Daisy",
+      "type": "Dog",
+      "breed": "Cavalier Spaniel",
+      "age": "2 years",
+      "city": "Los Angeles",
+      "emoji": "\ud83d\udc36",
+      "color": "#f6d49c",
+      "description": "A gentle, playful companion who loves sunshine."
+    },
+    {
+      "id": 2,
+      "name": "Milo",
+      "type": "Cat",
+      "breed": "British Shorthair",
+      "age": "1 year",
+      "city": "Austin",
+      "emoji": "\ud83d\udc31",
+      "color": "#d7dfe6",
+      "description": "A curious little explorer with a calm personality."
+    },
+    {
+      "id": 3,
+      "name": "Coco",
+      "type": "Dog",
+      "breed": "Golden Retriever",
+      "age": "8 months",
+      "city": "Seattle",
+      "emoji": "\ud83d\udc15",
+      "color": "#f3dfba",
+      "description": "Friendly, energetic and ready for a loving home."
+    },
+    {
+      "id": 4,
+      "name": "Luna",
+      "type": "Rabbit",
+      "breed": "Holland Lop",
+      "age": "1 year",
+      "city": "Portland",
+      "emoji": "\ud83d\udc30",
+      "color": "#e8d7dc",
+      "description": "A sweet bunny who enjoys quiet afternoons."
+    }
+  ],
+  "applications": [],
+  "users": []
+}
