@@ -12,6 +12,17 @@ const defaultPhotos = {
   Luna: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=600&auto=format&fit=crop'
 };
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+const normalizeEmail = value => String(value ?? '').trim().toLowerCase();
+const validEmail = value => {
+  const email = normalizeEmail(value);
+  if (!email || email.length > 254 || email.includes('..')) return false;
+  const parts = email.split('@');
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (!local || local.length > 64 || local.startsWith('.') || local.endsWith('.') || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return false;
+  const labels = domain.split('.');
+  return labels.length >= 2 && /^[a-z]{2,63}$/i.test(labels.at(-1)) && labels.every(label => label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label));
+};
 let pets = [];
 let filter = 'All';
 
@@ -61,7 +72,7 @@ function registration() {
     for (const key of ['name', 'email', 'phone', 'password']) {
       if (!input[key].trim()) { error(key, 'This field is required.'); valid = false; }
     }
-    if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) { error('email', 'Enter a valid email address.'); valid = false; }
+    if (input.email && !validEmail(input.email)) { error('email', 'Enter a valid email address.'); valid = false; }
     if (input.phone && !/^\d{10}$/.test(input.phone)) { error('phone', 'Phone number must contain exactly 10 digits.'); valid = false; }
     if (input.password && input.password.length < 8) { error('password', 'Password must contain at least 8 characters.'); valid = false; }
     if (input.password && input.password.length >= 8 && !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(input.password)) { error('password', 'Use uppercase, lowercase, number and special character.'); valid = false; }
@@ -75,12 +86,22 @@ function registration() {
 }
 
 function login() {
-  openModal(`<span class="eyebrow">WELCOME BACK</span><h2>Good to see you again!</h2><p>Sign in to your Pet House account.</p><form id="loginForm">${field('email', 'Email / Admin username', 'text', 'you@example.com')}${field('password', 'Password', 'password', 'Your password')}<div id="formNotice"></div><button class="btn" style="width:100%">Log in ↗</button></form><p>New here? <button class="switch" id="switchRegister">Create an account</button></p>`);
+  openModal(`<span class="eyebrow">WELCOME BACK</span><h2>Good to see you again!</h2><p>Sign in to your Pet Adoption Center account.</p><form id="loginForm" novalidate>${field('email', 'Email / Admin username', 'text', 'you@example.com')}${field('password', 'Password', 'password', 'Your password')}<div id="formNotice"></div><button class="btn" style="width:100%">Log in ↗</button></form><p>New here? <button class="switch" id="switchRegister">Create an account</button></p>`);
   $('#switchRegister').onclick = registration;
   $('#loginForm').onsubmit = async event => {
     event.preventDefault();
     try {
       const input = Object.fromEntries(new FormData(event.target));
+      const identifier = input.email.trim();
+      error('email', '');
+      error('password', '');
+      $('#formNotice').innerHTML = '';
+      let valid = true;
+      if (!identifier) { error('email', 'Email address is required.'); valid = false; }
+      else if (identifier.toLowerCase() !== 'admin' && !validEmail(identifier)) { error('email', 'Enter a valid email address.'); valid = false; }
+      if (!input.password) { error('password', 'Password is required.'); valid = false; }
+      if (!valid) return;
+      input.email = identifier;
       const data = await api('/api/login', { method: 'POST', body: JSON.stringify(input) });
       if (data.role === 'admin') location.href = '/admin.html';
       else {
@@ -104,7 +125,7 @@ function showPet(id) {
       error(key, '');
       if (!input[key].trim()) { error(key, 'This field is required.'); valid = false; }
     });
-    if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) { error('email', 'Enter a valid email.'); valid = false; }
+    if (input.email && !validEmail(input.email)) { error('email', 'Enter a valid email.'); valid = false; }
     if (input.phone && !/^\d{10}$/.test(input.phone)) { error('phone', 'Enter exactly 10 digits.'); valid = false; }
     if (!valid) return;
     try {

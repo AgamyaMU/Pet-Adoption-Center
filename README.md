@@ -1,4 +1,4 @@
-# Pet House — Pet Adoption Center 🐾
+# Pet Adoption Center 🐾
 
 A lightweight full-stack **Web Technology college project** inspired by a sage-green pet adoption UI reference.
 

@@ -42,7 +42,19 @@ const body = async req => {
   }
   return JSON.parse(value || '{}');
 };
-const validEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value || '');
+const normalizeEmail = value => String(value || '').trim().toLowerCase();
+const validEmail = value => {
+  const email = normalizeEmail(value);
+  if (!email || email.length > 254 || email.includes('..')) return false;
+  const parts = email.split('@');
+  if (parts.length !== 2) return false;
+  const [local, domain] = parts;
+  if (!local || local.length > 64 || local.startsWith('.') || local.endsWith('.')) return false;
+  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return false;
+  const labels = domain.split('.');
+  if (labels.length < 2 || !/^[a-z]{2,63}$/i.test(labels.at(-1))) return false;
+  return labels.every(label => label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label));
+};
 const validPhone = value => /^\d{10}$/.test(value || '');
 
 function storeImage(dataUrl) {
@@ -76,15 +88,16 @@ const server = http.createServer(async (req, res) => {
         const input = await body(req);
         if (!input.petId || !input.name?.trim() || !validEmail(input.email) || !validPhone(input.phone) || !input.message?.trim()) return send(res, 400, { error: 'Please complete all fields with valid contact information.' });
         if (!data.pets.some(pet => pet.id === Number(input.petId))) return send(res, 404, { error: 'Pet not found' });
-        data.applications.push({ id: crypto.randomUUID(), petId: Number(input.petId), name: input.name.trim(), email: input.email.trim().toLowerCase(), phone: input.phone, message: input.message.trim(), status: 'Pending', date: new Date().toISOString() });
+        data.applications.push({ id: crypto.randomUUID(), petId: Number(input.petId), name: input.name.trim(), email: normalizeEmail(input.email), phone: input.phone, message: input.message.trim(), status: 'Pending', date: new Date().toISOString() });
         save(data);
         return send(res, 201, { message: 'Application submitted successfully!' });
       }
 
       if (pathname === '/api/register' && req.method === 'POST') {
         const input = await body(req);
-        if (!input.name?.trim() || !validEmail(input.email) || !validPhone(input.phone) || !input.password || input.password.length < 8 || !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(input.password)) return send(res, 400, { error: 'Invalid registration details' });
-        const email = input.email.trim().toLowerCase();
+        if (!validEmail(input.email)) return send(res, 400, { error: 'Enter a valid email address.' });
+        if (!input.name?.trim() || !validPhone(input.phone) || !input.password || input.password.length < 8 || !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(input.password)) return send(res, 400, { error: 'Invalid registration details' });
+        const email = normalizeEmail(input.email);
         if (data.users.some(user => user.email === email)) return send(res, 409, { error: 'Email already registered' });
         const salt = crypto.randomBytes(16).toString('hex');
         const hash = crypto.scryptSync(input.password, salt, 64).toString('hex');
@@ -95,13 +108,15 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname === '/api/login' && req.method === 'POST') {
         const input = await body(req);
-        if (input.email === adminUser && input.password === adminPass) {
+        const identifier = String(input.email || '').trim();
+        if (identifier === adminUser && input.password === adminPass) {
           const token = crypto.randomBytes(32).toString('hex');
           sessions.set(token, 'admin');
           res.setHeader('Set-Cookie', `session=${token}; HttpOnly; SameSite=Strict; Path=/`);
           return send(res, 200, { role: 'admin' });
         }
-        const user = data.users.find(value => value.email === String(input.email || '').trim().toLowerCase());
+        if (!validEmail(identifier)) return send(res, 400, { error: 'Enter a valid email address.' });
+        const user = data.users.find(value => value.email === normalizeEmail(identifier));
         if (user) {
           const hash = crypto.scryptSync(input.password || '', user.salt, 64);
           if (crypto.timingSafeEqual(hash, Buffer.from(user.hash, 'hex'))) return send(res, 200, { role: 'user', name: user.name });
@@ -179,4 +194,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(process.env.PORT || 3000, () => console.log('Pet House running at http://localhost:' + (process.env.PORT || 3000)));
+server.listen(process.env.PORT || 3000, () => console.log('Pet Adoption Center running at http://localhost:' + (process.env.PORT || 3000)));
